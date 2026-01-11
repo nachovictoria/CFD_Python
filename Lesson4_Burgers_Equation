@@ -1,0 +1,57 @@
+# 12 steps to Navier Stokes
+# Lesson 4: Burgers' Equation
+# Source: https://lorenabarba.com/blog/cfd-python-12-steps-to-navier-stokes/
+
+# Library import
+from matplotlib.dates import num2timedelta
+import numpy as np
+import matplotlib.pyplot as plt
+import sympy
+import time
+import sys
+
+# Output config
+sympy.init_printing(use_latex=True)
+x,nu,t=sympy.symbols('x nu t')
+phi=(sympy.exp(-(x - 4 * t)**2 / (4 * nu * (t + 1)))+sympy.exp(-(x - 4 * t - 2 * sympy.pi)**2 / (4 * nu * (t + 1))))
+phiprime=sympy.diff(phi,x) # Phi derivative symbolic
+
+u=-2*nu*(phiprime/phi)+4 # Symbolic expression for u
+
+ufunc=sympy.utilities.lambdify((t,x,nu),u) # Convert to function
+
+# Simulation variables
+nu=0.07 # Viscosity
+nx=101
+nt=100 # Number of spacial divisions
+dx=2*(np.pi)/(nx-1) # Because it is periodic
+dt=dx*nu
+
+x=np.linspace(0,2*np.pi,nx) # Space domain
+t=0 # Time domain
+un=np.empty(nx) # Previous time step
+
+u = np.asarray([ufunc(t, x0, nu) for x0 in x]) # Periodic initial condition (saw-tooth)
+
+plt.figure(figsize=(11, 7), dpi=100)
+plt.plot(x, u, marker='o', lw=2, label='Initial condition')
+plt.xlim([0, 2 * np.pi])
+plt.ylim([0, 10])
+
+for n in range(nt):
+    un = u.copy()
+    for i in range(1, nx-1):
+        u[i] = un[i] - un[i] * dt / dx *(un[i] - un[i-1]) + nu * dt / dx**2 *\
+                (un[i+1] - 2 * un[i] + un[i-1])
+    u[0] = un[0] - un[0] * dt / dx * (un[0] - un[-2]) + nu * dt / dx**2 *\
+                (un[1] - 2 * un[0] + un[-2])
+    u[-1] = u[0]
+        
+u_analytical = np.asarray([ufunc(nt * dt, xi, nu) for xi in x])
+
+plt.plot(x,u, marker='o', lw=2, label='Computational')
+plt.plot(x, u_analytical, label='Analytical')
+plt.xlim([0, 2 * np.pi])
+plt.ylim([0, 10])
+plt.legend()
+plt.show()
